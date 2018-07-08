@@ -1,0 +1,15 @@
+*~
+\#*
+.#*
+*.pyc
+
+feed_vary.dat
+feed_vary_extr.dat
+FullRun_2018-06-29.csv
+ModelList.txt
+nosub_const.dat
+nosub_vary.dat
+tran_vary.dat
+tran_vary_extr.dat
+
+output/
