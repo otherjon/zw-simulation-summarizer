@@ -2,6 +2,7 @@
 \#*
 .#*
 *.pyc
+.~lock*
 
 feed_vary.dat
 feed_vary_extr.dat
@@ -12,4 +13,7 @@ nosub_vary.dat
 tran_vary.dat
 tran_vary_extr.dat
 
-output/
+intermediate/
+raw_data/
+*_SummarizedData.csv
+
