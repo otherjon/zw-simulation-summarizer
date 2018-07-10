@@ -114,12 +114,14 @@ SUMMARY_FIELDS = (
   "min-harvest",
   "mean-harvest",
   "max-harvest",
+  "total-harvest",
   "min-woodland-biomass",
   "mean-woodland-biomass",
   "max-woodland-biomass",
   "max-percent-crop-eaten",
   "actual-cow-repro-rate",
   "crop-eaten-per-half-hour-per-cow",
+  "subsidy-used",
   "end-year",
   "termination-reason",
 )
@@ -207,7 +209,6 @@ def verify_tests_pass_and_get_filenames(args):
   if not os.path.exists(rst_filename):
     print "WARNING: %r does not exist, skipping check" % rst_filename
   else:
-    # TODO: Verify no errors in software tests
     with open(rst_filename) as f:
       behaviorspace_header_line = f.readline()
       nlogo_filename_line = f.readline()
@@ -460,6 +461,7 @@ def run_summary_data_from_per_year_data(args, per_run_data, per_year_data):
   #  count-cows-in-crops)
   final_year = years_in_run[-1]
   final_year_timer = float(per_year_data[final_year]["timer"])
+  subsidy_used = int(per_year_data[final_year]["subsidy-used"])
   total_births = int(per_year_data[final_year]["total-number-of-births"])
   total_cows_in_crops = int(per_year_data[final_year]["count-cows-in-crops"])
 
@@ -475,6 +477,7 @@ def run_summary_data_from_per_year_data(args, per_run_data, per_year_data):
     "min-harvest": min_harvest,
     "mean-harvest": None if n_years == 0 else total_harvest / n_years,
     "max-harvest": max_harvest,
+    "total-harvest": total_harvest,
     "min-woodland-biomass": min_woodland,
     "mean-woodland-biomass": None if n_years == 0 else total_woodland / n_years,
     "max-woodland-biomass": max_woodland,
@@ -484,6 +487,7 @@ def run_summary_data_from_per_year_data(args, per_run_data, per_year_data):
     "crop-eaten-per-half-hour-per-cow": (
       None if not total_cows_in_crops else
       total_crop_eaten / total_cows_in_crops),
+    "subsidy-used": subsidy_used,
     "end-year": year,
     "final-year-timer": final_year_timer,
     "termination-reason": termination_reason,
@@ -511,9 +515,15 @@ def write_final_data(args, per_run_data, per_year_data):
 def main():
   args = parse_cmdline(sys.argv[1:])
   per_run_data, per_year_data = None, None
+
+  # Run first stage, if requested.
   if args.stage in ('raw-to-int', 'all'):
     datafiles = verify_tests_pass_and_get_filenames(args)
     per_run_data, per_year_data = make_intermediate_files(args, datafiles)
+
+  # Run second stage, if requested.
+  # Read in per_run_data/per_year_data from files, if we don't have them from
+  #   running the first stage.
   if args.stage in ('int-to-final', 'all'):
     if (per_run_data, per_year_data) == (None, None):
       per_run_data, per_year_data = read_intermediate_files(args)
