@@ -106,6 +106,8 @@ SUMMARY_FIELDS = (
   "total-crop-perimeter",
   "average-contiguous-crop-cluster-size",
   "proportion-crops",
+  "model-setup-time",
+  "final-year-timer",
   "min-cow-count",
   "mean-cow-count",
   "max-cow-count",
@@ -128,7 +130,6 @@ EXCLUDE_FROM_SUMMARY = (
   "source-file-from-cluster",
   "behaviorspace-name",
   "run number",
-  "model-setup-time"
 )
 
 def parse_cmdline(argv):
@@ -412,7 +413,8 @@ def run_summary_data_from_per_year_data(args, per_run_data, per_year_data):
   total_cows_in_crops = 0
   termination_reason = "end of simulation"
 
-  for year in sorted(per_year_data.keys()):
+  years_in_run = sorted(per_year_data.keys())
+  for year in years_in_run:
     if year == "0": continue
     n_years += 1
 
@@ -442,15 +444,6 @@ def run_summary_data_from_per_year_data(args, per_run_data, per_year_data):
       if fraction_crop_eaten > max_crop_eaten:
         max_crop_eaten = fraction_crop_eaten
 
-    # These values are cumulative in the raw data.
-    # (total-number-of-births for year Y is the sum of the number of births
-    #  in all years up through and including Y, and similarly for
-    #  count-cows-in-crops)
-    total_births = int(per_year_data[year]["total-number-of-births"])
-
-    # cows-in-crops is summed over *every tick* (3 ticks/day)
-    total_cows_in_crops = int(per_year_data[year]["count-cows-in-crops"])
-
     if cows < args.min_cows:
       termination_reason = "cow threshold"
       break
@@ -460,6 +453,15 @@ def run_summary_data_from_per_year_data(args, per_run_data, per_year_data):
     if woodland < args.min_woodland:
       termination_reason = "woodland threshold"
       break
+
+  # Retrieve several cumulative values from the final year's data.
+  # (total-number-of-births for year Y is the sum of the number of births
+  #  in all years up through and including Y, and similarly for
+  #  count-cows-in-crops)
+  final_year = years_in_run[-1]
+  final_year_timer = float(per_year_data[final_year]["timer"])
+  total_births = int(per_year_data[final_year]["total-number-of-births"])
+  total_cows_in_crops = int(per_year_data[final_year]["count-cows-in-crops"])
 
   # total_cows_in_crops is measured in cows*ticks
   # (3 ticks/day, so 1 tick = 8 hours = 16 half-hours)
@@ -483,6 +485,7 @@ def run_summary_data_from_per_year_data(args, per_run_data, per_year_data):
       None if not total_cows_in_crops else
       total_crop_eaten / total_cows_in_crops),
     "end-year": year,
+    "final-year-timer": final_year_timer,
     "termination-reason": termination_reason,
   }
 
