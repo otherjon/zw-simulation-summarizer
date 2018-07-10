@@ -401,7 +401,7 @@ def read_intermediate_files(args):
   return per_run_data, per_year_data
 
 
-def run_summary_data_from_per_year_data(args, per_year_data):
+def run_summary_data_from_per_year_data(args, per_run_data, per_year_data):
   min_cow_count, total_cows, max_cow_count = None, 0, None
   min_harvest, total_harvest, max_harvest = None, 0, None
   min_woodland, total_woodland, max_woodland = None, 0, None
@@ -421,7 +421,11 @@ def run_summary_data_from_per_year_data(args, per_year_data):
     if max_cow_count is None or cows > max_cow_count: max_cow_count = cows
     total_cows += cows
 
-    harvest = float(per_year_data[year]["current-harvest"])
+    if per_run_data["how-long-to-store-grain"] == 0:
+      harvest = float(per_year_data[year]["current-harvest"])
+    else:
+      harvest = float(per_year_data[year]["mean previous-harvests-list"])
+
     if min_harvest is None or harvest < min_harvest: min_harvest = harvest
     if max_harvest is None or harvest > max_harvest: max_harvest = harvest
     total_harvest += harvest
@@ -497,7 +501,7 @@ def write_final_data(args, per_run_data, per_year_data):
       data = {k: v for k, v in per_run_data[run_id].items()
               if k not in EXCLUDE_FROM_SUMMARY}
       data.update(run_summary_data_from_per_year_data(
-        args, per_year_data[run_id]))
+        args, per_run_data[run_id], per_year_data[run_id]))
       dw.writerow(data)
 
 
