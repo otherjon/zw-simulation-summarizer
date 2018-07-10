@@ -140,8 +140,9 @@ def parse_cmdline(argv):
   parser.add_argument(
     '--stage', choices=('autodetect', 'raw-to-int', 'int-to-final', 'all'),
     default='autodetect', help="Which stages of processing to run.")
-  parser.add_argument('--cluster-dir', default=".", help='directory in which '
-                      'raw cluster output files can be found')
+  parser.add_argument(
+    '--cluster-dir', default="./raw_data",
+    help='directory in which raw cluster output files can be found')
   parser.add_argument('--intermediate-dir', help='Directory to put intermediate'
                       ' files (default CLUSTER_DIR/../intermediate)')
   parser.add_argument('--output-file', help='Filename of final output CSV'
