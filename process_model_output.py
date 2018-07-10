@@ -461,7 +461,7 @@ def run_summary_data_from_per_year_data(args, per_run_data, per_year_data):
   #  count-cows-in-crops)
   final_year = years_in_run[-1]
   final_year_timer = float(per_year_data[final_year]["timer"])
-  subsidy_used = int(per_year_data[final_year]["subsidy-used"])
+  subsidy_used = float(per_year_data[final_year]["subsidy-used"])
   total_births = int(per_year_data[final_year]["total-number-of-births"])
   total_cows_in_crops = int(per_year_data[final_year]["count-cows-in-crops"])
 
