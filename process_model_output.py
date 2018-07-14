@@ -187,8 +187,11 @@ def parse_cmdline(argv):
   args = parser.parse_args(argv)
 
   threshold_errors = []
-  args.min_cows_threshold = args.min_cows + random.randrange(
-    args.min_cows - args.perturb_cows, args.min_cows + args.perturb_cows)
+  if args.perturb_cows > 0:
+    args.min_cows_threshold = random.randrange(
+      args.min_cows - args.perturb_cows, args.min_cows + args.perturb_cows + 1)
+  else:
+    args.min_cows_threshold = args.min_cows
   if args.min_cows - args.perturb_cows < 0:
     threshold_errors.append("min cow threshold could be negative")
   args.min_harvest_threshold = args.min_cows + random.uniform(
