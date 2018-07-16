@@ -169,6 +169,10 @@ def parse_cmdline(argv):
   parser.add_argument('--perturb-woodland', help='How much (in %%) to perturb '
                       'the minimum woodland threshold',
                       type=float, default=0.0)
+  parser.add_argument(
+    '--perturb-each-run', action="store_true", default=False,
+    help='Generate different thresholds (different random perturbations) for '
+    'each simulation run')
 
   default_per_run_interm_template = (
     '%(behaviorspace-name)s-%(run number)06d_PerRunData.csv')
@@ -187,27 +191,35 @@ def parse_cmdline(argv):
   args = parser.parse_args(argv)
 
   threshold_errors = []
-  args.min_cows_threshold = (
-    args.min_cows if args.perturb_cows <= 0 else random.randrange(
-      args.min_cows - args.perturb_cows, args.min_cows + args.perturb_cows + 1))
   if args.min_cows - args.perturb_cows < 0:
     threshold_errors.append("min cow threshold could be negative")
-  args.min_harvest_threshold = random.uniform(
-    args.min_harvest * (1.0 - .01 * args.perturb_harvest),
-    args.min_harvest * (1.0 + .01 * args.perturb_harvest))
   if args.perturb_harvest > 100.0:
     threshold_errors.append("min harvest threshold could be negative")
-  args.min_woodland_threshold = random.uniform(
-    args.min_woodland * (1.0 - .01 * args.perturb_woodland),
-    args.min_woodland * (1.0 + .01 * args.perturb_woodland))
   if args.perturb_woodland > 100.0:
     threshold_errors.append("min woodland threshold could be negative")
   if threshold_errors:
     for e in threshold_errors:
       print "ERROR: %s" % e
     sys.exit(1)
-  if (args.perturb_cows != 0 or args.perturb_harvest != 0 or
+  if args.perturb_each_run and (
+      args.perturb_cows != 0 or args.perturb_harvest != 0 or
       args.perturb_woodland != 0):
+    # We're perturbing each run.  Generate a new set of thresholds each time
+    # run_summary_data_from_per_year_data() is called.
+    pass
+  else:
+    # Either we're perturbing all runs the same, or we're not perturbing runs
+    # at all.  In either case, thresholds were generated during arg parsing.
+    args.min_cows_threshold = (
+      args.min_cows if args.perturb_cows <= 0 else random.randrange(
+        args.min_cows - args.perturb_cows,
+        args.min_cows + args.perturb_cows + 1))
+    args.min_harvest_threshold = random.uniform(
+      args.min_harvest * (1.0 - .01 * args.perturb_harvest),
+      args.min_harvest * (1.0 + .01 * args.perturb_harvest))
+    args.min_woodland_threshold = random.uniform(
+      args.min_woodland * (1.0 - .01 * args.perturb_woodland),
+      args.min_woodland * (1.0 + .01 * args.perturb_woodland))
     print "INFO: min cows threshold = %d" % args.min_cows_threshold
     print "INFO: min harvest threshold = %f" % args.min_harvest_threshold
     print "INFO: min woodland threshold = %f" % args.min_woodland_threshold
@@ -452,6 +464,28 @@ def run_summary_data_from_per_year_data(args, per_run_data, per_year_data):
   total_cows_in_crops = 0
   termination_reason = "end of simulation"
 
+  if args.perturb_each_run and (
+      args.perturb_cows != 0 or args.perturb_harvest != 0 or
+      args.perturb_woodland != 0):
+    # We're perturbing each run.  Generate a new set of thresholds each time
+    # this function is called.
+    min_cows_threshold = (
+      args.min_cows if args.perturb_cows <= 0 else random.randrange(
+        args.min_cows - args.perturb_cows,
+        args.min_cows + args.perturb_cows + 1))
+    min_harvest_threshold = random.uniform(
+      args.min_harvest * (1.0 - .01 * args.perturb_harvest),
+      args.min_harvest * (1.0 + .01 * args.perturb_harvest))
+    min_woodland_threshold = random.uniform(
+      args.min_woodland * (1.0 - .01 * args.perturb_woodland),
+      args.min_woodland * (1.0 + .01 * args.perturb_woodland))
+  else:
+    # Either we're perturbing all runs the same, or we're not perturbing runs
+    # at all.  In either case, thresholds were generated during arg parsing.
+    min_cows_threshold = args.min_cows_threshold
+    min_harvest_threshold = args.min_harvest_threshold
+    min_woodland_threshold = args.min_woodland_threshold
+
   years_in_run = sorted(per_year_data.keys())
   for year in years_in_run:
     if year == "0": continue
@@ -483,13 +517,13 @@ def run_summary_data_from_per_year_data(args, per_run_data, per_year_data):
       if fraction_crop_eaten > max_crop_eaten:
         max_crop_eaten = fraction_crop_eaten
 
-    if cows < args.min_cows_threshold:
+    if cows < min_cows_threshold:
       termination_reason = "cow threshold"
       break
-    if harvest < args.min_harvest_threshold:
+    if harvest < min_harvest_threshold:
       termination_reason = "harvest threshold"
       break
-    if woodland < args.min_woodland_threshold:
+    if woodland < min_woodland_threshold:
       termination_reason = "woodland threshold"
       break
 
@@ -529,9 +563,9 @@ def run_summary_data_from_per_year_data(args, per_run_data, per_year_data):
     "end-year": year,
     "final-year-timer": final_year_timer,
     "termination-reason": termination_reason,
-    "min-cows-threshold": args.min_cows_threshold,
-    "min-harvest-threshold": args.min_harvest_threshold,
-    "min-woodland-threshold": args.min_woodland_threshold,
+    "min-cows-threshold": min_cows_threshold,
+    "min-harvest-threshold": min_harvest_threshold,
+    "min-woodland-threshold": min_woodland_threshold,
   }
 
 
