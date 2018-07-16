@@ -163,10 +163,10 @@ def parse_cmdline(argv):
   parser.add_argument('--perturb-cows', help='How much (in cows) to perturb '
                       'the minimum cow threshold',
                       type=int, default=0)
-  parser.add_argument('--perturb-harvest', help='How much (in %) to perturb '
+  parser.add_argument('--perturb-harvest', help='How much (in %%) to perturb '
                       'the minimum harvest threshold',
                       type=float, default=0.0)
-  parser.add_argument('--perturb-woodland', help='How much (in %) to perturb '
+  parser.add_argument('--perturb-woodland', help='How much (in %%) to perturb '
                       'the minimum woodland threshold',
                       type=float, default=0.0)
 
