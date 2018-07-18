@@ -608,7 +608,7 @@ def read_intermediate_files_and_write_final_data(args):
       dr_runlist = csv.DictReader(f_runlist)
       for runlist_row in dr_runlist:
         datafilenames = dict(runlist_row)
-        run_id = tempdict.pop("Run ID")
+        run_id = datafilenames.pop("Run ID")
 
         per_run_data = {"Run ID": run_id}
         per_run_file = os.path.join(args.intermediate_dir,
