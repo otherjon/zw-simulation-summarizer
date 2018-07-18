@@ -173,6 +173,9 @@ def parse_cmdline(argv):
     '--perturb-each-run', action="store_true", default=False,
     help='Generate different thresholds (different random perturbations) for '
     'each simulation run')
+  parser.add_argument(
+    '--huge', action="store_true", default=False,
+    help='Assume data is too large to fit in memory (runs slower)')
 
   default_per_run_interm_template = (
     '%(behaviorspace-name)s-%(run number)06d_PerRunData.csv')
@@ -299,8 +302,9 @@ def make_intermediate_files(args, filenames):
   all_per_run_data, all_per_year_data = {}, {}
   for filename in filenames:
     per_run_data, per_year_data = read_raw_file(filename)
-    all_per_run_data.update(per_run_data)
-    all_per_year_data.update(per_year_data)
+    if not args.huge:
+      all_per_run_data.update(per_run_data)
+      all_per_year_data.update(per_year_data)
     ids_files = write_intermediate_data(args, per_run_data, per_year_data)
     ids_and_filenames.extend(ids_files)
 
@@ -309,7 +313,7 @@ def make_intermediate_files(args, filenames):
     for id_str, per_run_filename, per_year_filename in ids_and_filenames:
       f.write("%s,%s,%s\n" % (id_str, per_run_filename, per_year_filename))
 
-  return all_per_run_data, all_per_year_data
+  return (None, None) if args.huge else (all_per_run_data, all_per_year_data)
 
 
 def extract_dict_from_row(row, fieldnames):
@@ -587,6 +591,49 @@ def write_final_data(args, per_run_data, per_year_data):
       dw.writerow(data)
 
 
+def read_intermediate_files_and_write_final_data(args):
+  # used if there is too much data to fit in memory
+
+  if os.path.exists(args.output_file) and not args.overwrite:
+    print ("ERROR: File %r already exists!\n  (use --overwrite to overwrite)"
+           % args.output_file)
+    sys.exit(1)
+
+  print "INFO: Writing summary output to %r" % args.output_file
+  with open(args.output_file, "w") as outf:
+    dw = csv.DictWriter(outf, fieldnames=SUMMARY_FIELDS)
+    dw.writeheader()
+
+    with open(os.path.join(args.intermediate_dir, "INDEX")) as f_runlist:
+      dr_runlist = csv.DictReader(f_runlist)
+      for runlist_row in dr_runlist:
+        datafilenames = dict(runlist_row)
+        run_id = tempdict.pop("Run ID")
+
+        per_run_data = {"Run ID": run_id}
+        per_run_file = os.path.join(args.intermediate_dir,
+                                    datafilenames["PerRunDataFile"])
+        with open(per_run_file) as f_perrun:
+          dr_perrun = csv.DictReader(f_perrun)
+          for perrun_row in dr_perrun:
+            # only one row in a PerRunData file
+            per_run_data.update(perrun_row)
+
+        per_year_data = {}
+        per_year_file = os.path.join(args.intermediate_dir,
+                                     datafilenames["PerYearDataFile"])
+        with open(per_year_file) as f_peryear:
+          dr_peryear = csv.DictReader(f_peryear)
+          for peryear_row in dr_peryear:
+            per_year_data[int(peryear_row["calendar-year"])] = dict(peryear_row)
+
+        data = {k: v for k, v in per_run_data.items()
+                if k not in EXCLUDE_FROM_SUMMARY}
+        data.update(run_summary_data_from_per_year_data(
+          args, per_run_data, per_year_data))
+        dw.writerow(data)
+
+
 def main():
   args = parse_cmdline(sys.argv[1:])
   per_run_data, per_year_data = None, None
@@ -600,9 +647,12 @@ def main():
   # Read in per_run_data/per_year_data from files, if we don't have them from
   #   running the first stage.
   if args.stage in ('int-to-final', 'all'):
-    if (per_run_data, per_year_data) == (None, None):
-      per_run_data, per_year_data = read_intermediate_files(args)
-    write_final_data(args, per_run_data, per_year_data)
+    if args.huge:
+      read_intermediate_files_and_write_final_data(args)
+    else:
+      if (per_run_data, per_year_data) == (None, None):
+        per_run_data, per_year_data = read_intermediate_files(args)
+      write_final_data(args, per_run_data, per_year_data)
 
 
 if __name__ == '__main__': main()
