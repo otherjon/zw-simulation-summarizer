@@ -6,6 +6,7 @@ import random
 import re
 import time
 import argparse
+import subprocess
 import csv
 
 
@@ -297,21 +298,21 @@ def verify_tests_pass_and_get_filenames(args):
 
 
 def make_intermediate_files(args, filenames):
-  ids_and_filenames = []
   print "INFO: Making intermediate files from %d raw source files" % len(filenames)
   all_per_run_data, all_per_year_data = {}, {}
-  for filename in filenames:
-    per_run_data, per_year_data = read_raw_file(filename)
-    if not args.huge:
-      all_per_run_data.update(per_run_data)
-      all_per_year_data.update(per_year_data)
-    ids_files = write_intermediate_data(args, per_run_data, per_year_data)
-    ids_and_filenames.extend(ids_files)
-
   with open(os.path.join(args.intermediate_dir, "INDEX"), "w") as f:
     f.write("Run ID,PerRunDataFile,PerYearDataFile\n")
-    for id_str, per_run_filename, per_year_filename in ids_and_filenames:
-      f.write("%s,%s,%s\n" % (id_str, per_run_filename, per_year_filename))
+    for filename in filenames:
+      per_run_data, per_year_data = read_raw_file(filename)
+      if not args.huge:
+        all_per_run_data.update(per_run_data)
+        all_per_year_data.update(per_year_data)
+      ids_files = write_intermediate_data(args, per_run_data, per_year_data)
+      for id_str, per_run_filename, per_year_filename in ids_files:
+        f.write("%s,%s,%s\n" % (id_str, per_run_filename, per_year_filename))
+
+      del per_run_data
+      del per_year_data
 
   return (None, None) if args.huge else (all_per_run_data, all_per_year_data)
 
@@ -345,6 +346,9 @@ def read_raw_file(filename):
   expected_fields = PER_RUN_FIELDS + PER_YEAR_FIELDS + ("[run number]",)
 
   fields_verified = False
+  wc_output = subprocess.check_output(["/usr/bin/wc", "-l", filename])
+  m = re.match("(\d+)", wc_output)
+  print "    %s: %d rows" % (filename, int(m.group(1)) - 6)
   with open(filename) as f:
     behaviorspace_header_line = f.readline()
     nlogo_filename_line = f.readline()
@@ -365,7 +369,12 @@ def read_raw_file(filename):
     reader = csv.DictReader(f)
     per_run_data = {}
     per_year_data = {}
+    rows_read = 0
     for row in reader:
+      rows_read += 1
+      if rows_read % 100000 == 0:
+        print ("  ... %.1fM" % (float(rows_read)/1e6)),
+        sys.stdout.flush()
       if not fields_verified:
         if set(expected_fields) != set(row.keys()):
           print "ERROR: Field name mismatch!"
@@ -401,7 +410,12 @@ def write_intermediate_data(args, per_run_data, per_year_data):
 
   id_filenames_list = []
   print "INFO: Writing intermediate files (%d run IDs)" % len(per_run_data)
+  run_ids_written = 0
   for run_id in sorted(per_run_data.keys()):
+    run_ids_written += 1
+    if run_ids_written % 100000 == 0:
+      print ("  ... %.1fM" % (float(run_ids_written)/1e6)),
+      sys.stdout.flush()
     per_run_filename = os.path.join(
       intermediate_dir, args.per_run_interm_template % per_run_data[run_id])
     per_year_filename = os.path.join(
